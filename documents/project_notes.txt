@@ -1,0 +1,9 @@
+This project is about building a local RAG AI assistant with Microsoft Foundry Local.
+
+The assistant can answer questions by searching through local documents.
+
+RAG means Retrieval-Augmented Generation. It retrieves relevant information, adds it as context, and generates an answer.
+
+Microsoft Foundry Local allows AI models to run locally on a computer without needing the internet.
+
+SQLite will be used to store document chunks and embeddings.
