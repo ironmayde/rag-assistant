@@ -62,7 +62,7 @@ def find_best_chunk(question, chunks):
     return best_chunk
 
 
-def generate_simple_answer(question, best_chunk):
+def generate_simple_answer(best_chunk):
     if best_chunk is None:
         return "I could not find relevant information in the documents."
 
@@ -81,16 +81,22 @@ Relevance score: {score}
 
 def main():
     print("RAG Assistant project started!")
-    print("\n--- Simple RAG Answer ---")
-
-    question = input("Ask a question: ")
+    print("\n--- Simple RAG Chat ---")
+    print("Type 'exit' to close the assistant.\n")
 
     chunks = read_chunks_from_database()
-    best_chunk = find_best_chunk(question, chunks)
 
-    answer = generate_simple_answer(question, best_chunk)
+    while True:
+        question = input("Ask a question: ")
 
-    print(answer)
+        if question.lower() == "exit":
+            print("Assistant closed.")
+            break
+
+        best_chunk = find_best_chunk(question, chunks)
+        answer = generate_simple_answer(best_chunk)
+
+        print(answer)
 
 
 if __name__ == "__main__":
