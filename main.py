@@ -49,7 +49,6 @@ def find_best_chunk(question, chunks):
             if word in clean_content:
                 score += 1
 
-        # Tanım sorularında sadece ilgili chunk'a ekstra puan ver
         if score > 0 and "what is" in question.lower():
             if "means" in clean_content:
                 score += 2
@@ -63,24 +62,35 @@ def find_best_chunk(question, chunks):
     return best_chunk
 
 
+def generate_simple_answer(question, best_chunk):
+    if best_chunk is None:
+        return "I could not find relevant information in the documents."
+
+    chunk_id, content, score = best_chunk
+
+    answer = f"""
+Answer:
+Based on the document, {content}
+
+Source chunk ID: {chunk_id}
+Relevance score: {score}
+"""
+
+    return answer
+
+
 def main():
     print("RAG Assistant project started!")
-    print("\n--- Question-Based Search ---")
+    print("\n--- Simple RAG Answer ---")
 
     question = input("Ask a question: ")
 
     chunks = read_chunks_from_database()
     best_chunk = find_best_chunk(question, chunks)
 
-    if best_chunk:
-        chunk_id, content, score = best_chunk
+    answer = generate_simple_answer(question, best_chunk)
 
-        print("\nBest matching chunk:")
-        print(f"ID: {chunk_id}")
-        print(f"Score: {score}")
-        print(f"Content: {content}")
-    else:
-        print("\nNo relevant chunk found.")
+    print(answer)
 
 
 if __name__ == "__main__":
