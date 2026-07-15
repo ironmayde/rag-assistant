@@ -1,26 +1,36 @@
 from database import read_chunks_from_database
-from search import find_best_chunk
-from answer import generate_simple_answer
+from embeddings import create_simple_embedding, calculate_similarity
 
 
 def main():
     print("RAG Assistant project started!")
-    print("\n--- Simple RAG Chat ---")
-    print("Type 'exit' to close the assistant.\n")
+    print("\n--- Simple Embedding Similarity Search ---")
 
+    question = input("Ask a question: ")
+
+    question_embedding = create_simple_embedding(question)
     chunks = read_chunks_from_database()
 
-    while True:
-        question = input("Ask a question: ")
+    best_chunk = None
+    best_score = 0
 
-        if question.lower() == "exit":
-            print("Assistant closed.")
-            break
+    for chunk_id, content in chunks:
+        chunk_embedding = create_simple_embedding(content)
+        score = calculate_similarity(question_embedding, chunk_embedding)
 
-        best_chunk = find_best_chunk(question, chunks)
-        answer = generate_simple_answer(best_chunk)
+        if score > best_score:
+            best_score = score
+            best_chunk = (chunk_id, content, score)
 
-        print(answer)
+    if best_chunk:
+        chunk_id, content, score = best_chunk
+
+        print("\nBest matching chunk:")
+        print(f"ID: {chunk_id}")
+        print(f"Score: {score}")
+        print(f"Content: {content}")
+    else:
+        print("\nNo relevant chunk found.")
 
 
 if __name__ == "__main__":
