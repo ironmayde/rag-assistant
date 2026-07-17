@@ -1,36 +1,53 @@
 from database import read_chunks_from_database
 from embeddings import create_simple_embedding, calculate_similarity
+from answer import generate_simple_answer
+from search import clean_text
 
 
-def main():
-    print("RAG Assistant project started!")
-    print("\n--- Simple Embedding Similarity Search ---")
-
-    question = input("Ask a question: ")
-
+def find_best_chunk_with_embeddings(question, chunks):
     question_embedding = create_simple_embedding(question)
-    chunks = read_chunks_from_database()
+    clean_question = clean_text(question)
 
     best_chunk = None
     best_score = 0
 
     for chunk_id, content in chunks:
         chunk_embedding = create_simple_embedding(content)
+        clean_content = clean_text(content)
+
         score = calculate_similarity(question_embedding, chunk_embedding)
+
+        if score > 0 and "what is" in question.lower():
+            if "means" in clean_content:
+                score += 2
+            if "retrievalaugmented generation" in clean_content:
+                score += 2
 
         if score > best_score:
             best_score = score
             best_chunk = (chunk_id, content, score)
 
-    if best_chunk:
-        chunk_id, content, score = best_chunk
+    return best_chunk
 
-        print("\nBest matching chunk:")
-        print(f"ID: {chunk_id}")
-        print(f"Score: {score}")
-        print(f"Content: {content}")
-    else:
-        print("\nNo relevant chunk found.")
+
+def main():
+    print("RAG Assistant project started!")
+    print("\n--- Simple Embedding RAG Chat ---")
+    print("Type 'exit' to close the assistant.\n")
+
+    chunks = read_chunks_from_database()
+
+    while True:
+        question = input("Ask a question: ")
+
+        if question.lower() == "exit":
+            print("Assistant closed.")
+            break
+
+        best_chunk = find_best_chunk_with_embeddings(question, chunks)
+        answer = generate_simple_answer(best_chunk)
+
+        print(answer)
 
 
 if __name__ == "__main__":
