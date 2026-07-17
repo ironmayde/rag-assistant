@@ -4,17 +4,14 @@ from answer import generate_simple_answer
 from search import clean_text
 
 
-def find_best_chunk_with_embeddings(question, chunks):
+def find_best_chunk_with_saved_embeddings(question, chunks):
     question_embedding = create_simple_embedding(question)
-    clean_question = clean_text(question)
 
     best_chunk = None
     best_score = 0
 
-    for chunk_id, content in chunks:
-        chunk_embedding = create_simple_embedding(content)
+    for chunk_id, content, chunk_embedding in chunks:
         clean_content = clean_text(content)
-
         score = calculate_similarity(question_embedding, chunk_embedding)
 
         if score > 0 and "what is" in question.lower():
@@ -32,7 +29,7 @@ def find_best_chunk_with_embeddings(question, chunks):
 
 def main():
     print("RAG Assistant project started!")
-    print("\n--- Simple Embedding RAG Chat ---")
+    print("\n--- Saved Embedding RAG Chat ---")
     print("Type 'exit' to close the assistant.\n")
 
     chunks = read_chunks_from_database()
@@ -44,7 +41,7 @@ def main():
             print("Assistant closed.")
             break
 
-        best_chunk = find_best_chunk_with_embeddings(question, chunks)
+        best_chunk = find_best_chunk_with_saved_embeddings(question, chunks)
         answer = generate_simple_answer(best_chunk)
 
         print(answer)
