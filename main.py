@@ -1,6 +1,6 @@
 from database import read_chunks_from_database
 from embeddings import create_simple_embedding, calculate_similarity
-from answer import generate_simple_answer
+from foundry_answer import generate_foundry_answer
 from search import clean_text
 
 
@@ -12,6 +12,7 @@ def find_best_chunk_with_saved_embeddings(question, chunks):
 
     for chunk_id, content, chunk_embedding in chunks:
         clean_content = clean_text(content)
+
         score = calculate_similarity(question_embedding, chunk_embedding)
 
         if score > 0 and "what is" in question.lower():
@@ -29,7 +30,7 @@ def find_best_chunk_with_saved_embeddings(question, chunks):
 
 def main():
     print("RAG Assistant project started!")
-    print("\n--- Saved Embedding RAG Chat ---")
+    print("\n--- Foundry Local RAG Chat ---")
     print("Type 'exit' to close the assistant.\n")
 
     chunks = read_chunks_from_database()
@@ -42,7 +43,7 @@ def main():
             break
 
         best_chunk = find_best_chunk_with_saved_embeddings(question, chunks)
-        answer = generate_simple_answer(best_chunk)
+        answer = generate_foundry_answer(question, best_chunk)
 
         print(answer)
 
