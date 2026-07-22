@@ -5,7 +5,7 @@ def generate_foundry_answer(question, best_chunk):
     if best_chunk is None:
         return "I could not find relevant information in the documents."
 
-    chunk_id, content, score = best_chunk
+    chunk_id, filename, content, score = best_chunk
 
     config = Configuration(app_name="rag-assistant")
     FoundryLocalManager.initialize(config)
@@ -23,10 +23,10 @@ def generate_foundry_answer(question, best_chunk):
         {
             "role": "system",
             "content": (
-                "You are a local RAG assistant. "
+                "You are a local RAG study assistant. "
                 "Answer the user's question only using the provided context. "
                 "If the answer is not in the context, say that you cannot find it in the document. "
-                "Answer briefly and clearly."
+                "Answer clearly and briefly."
             )
         },
         {
@@ -49,6 +49,7 @@ Question:
 Answer:
 {answer}
 
+Source file: {filename}
 Source chunk ID: {chunk_id}
 Relevance score: {score}
 """

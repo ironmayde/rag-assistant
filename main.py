@@ -10,7 +10,7 @@ def find_best_chunk_with_saved_embeddings(question, chunks):
     best_chunk = None
     best_score = 0
 
-    for chunk_id, content, chunk_embedding in chunks:
+    for chunk_id, filename, content, chunk_embedding in chunks:
         clean_content = clean_text(content)
 
         score = calculate_similarity(question_embedding, chunk_embedding)
@@ -23,7 +23,7 @@ def find_best_chunk_with_saved_embeddings(question, chunks):
 
         if score > best_score:
             best_score = score
-            best_chunk = (chunk_id, content, score)
+            best_chunk = (chunk_id, filename, content, score)
 
     return best_chunk
 

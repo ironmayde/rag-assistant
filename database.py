@@ -11,6 +11,7 @@ def create_database():
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
             content TEXT NOT NULL,
             embedding TEXT
         )
@@ -26,13 +27,13 @@ def save_chunks_to_database(chunks):
 
     cursor.execute("DELETE FROM documents")
 
-    for chunk in chunks:
+    for filename, chunk in chunks:
         embedding = create_simple_embedding(chunk)
         embedding_json = json.dumps(embedding)
 
         cursor.execute(
-            "INSERT INTO documents (content, embedding) VALUES (?, ?)",
-            (chunk, embedding_json)
+            "INSERT INTO documents (filename, content, embedding) VALUES (?, ?, ?)",
+            (filename, chunk, embedding_json)
         )
 
     connection.commit()
@@ -43,15 +44,15 @@ def read_chunks_from_database():
     connection = sqlite3.connect("rag.db")
     cursor = connection.cursor()
 
-    cursor.execute("SELECT id, content, embedding FROM documents")
+    cursor.execute("SELECT id, filename, content, embedding FROM documents")
     rows = cursor.fetchall()
 
     connection.close()
 
     chunks = []
 
-    for chunk_id, content, embedding_json in rows:
+    for chunk_id, filename, content, embedding_json in rows:
         embedding = json.loads(embedding_json)
-        chunks.append((chunk_id, content, embedding))
+        chunks.append((chunk_id, filename, content, embedding))
 
     return chunks

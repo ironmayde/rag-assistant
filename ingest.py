@@ -19,7 +19,7 @@ def read_txt_files_from_documents_folder():
             chunks = split_text_into_chunks(content)
 
             for chunk in chunks:
-                all_chunks.append(chunk)
+                all_chunks.append((filename, chunk))
 
             print(f"Loaded {len(chunks)} chunks from {filename}")
 
