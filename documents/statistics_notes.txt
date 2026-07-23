@@ -1,0 +1,9 @@
+Central Limit Theorem says that when the sample size is large enough, the sampling distribution of the sample mean becomes approximately normal.
+
+In many statistics problems, a sample size of 30 or more is considered large enough for using the Central Limit Theorem.
+
+Standard deviation measures how spread out the values are from the mean.
+
+A z-score shows how many standard deviations a value is away from the mean.
+
+Unusual values are often values with z-scores less than -2 or greater than 2.

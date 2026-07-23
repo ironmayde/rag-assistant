@@ -1,4 +1,25 @@
 from foundry_local_sdk import Configuration, FoundryLocalManager
+from foundry_local_sdk.exception import FoundryLocalException
+
+
+_manager_initialized = False
+
+
+def get_foundry_manager():
+    global _manager_initialized
+
+    if not _manager_initialized:
+        config = Configuration(app_name="rag-assistant")
+
+        try:
+            FoundryLocalManager.initialize(config)
+        except FoundryLocalException as error:
+            if "singleton" not in str(error).lower():
+                raise error
+
+        _manager_initialized = True
+
+    return FoundryLocalManager.instance
 
 
 def generate_foundry_answer(question, best_chunk):
@@ -7,10 +28,7 @@ def generate_foundry_answer(question, best_chunk):
 
     chunk_id, filename, content, score = best_chunk
 
-    config = Configuration(app_name="rag-assistant")
-    FoundryLocalManager.initialize(config)
-
-    manager = FoundryLocalManager.instance
+    manager = get_foundry_manager()
     model = manager.catalog.get_model("qwen2.5-0.5b")
 
     if not model.is_cached:
