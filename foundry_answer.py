@@ -43,8 +43,11 @@ def generate_foundry_answer(question, best_chunk):
             "content": (
                 "You are a local RAG study assistant. "
                 "Answer the user's question only using the provided context. "
-                "If the answer is not in the context, say that you cannot find it in the document. "
-                "Answer clearly and briefly."
+                "Do not use outside knowledge. "
+                "Do not invent details. "
+                "If the answer is not in the context, say: "
+                "'I could not find this information in the document.' "
+                "Write a clear and concise answer for a student."
             )
         },
         {
@@ -59,13 +62,21 @@ Question:
         }
     ])
 
-    answer = response.choices[0].message.content
+    short_answer = response.choices[0].message.content.strip()
 
     model.unload()
 
     return f"""
 Answer:
-{answer}
+Short answer:
+- {short_answer}
+
+Key points:
+- This answer was generated from the selected document chunk.
+- The response is based only on the retrieved context.
+
+Exam note:
+- Review the source file and chunk if you want to check the original note.
 
 Source file: {filename}
 Source chunk ID: {chunk_id}
