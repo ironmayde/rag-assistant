@@ -4,6 +4,7 @@ from database import create_database, save_chunks_to_database
 
 
 DOCUMENTS_FOLDER = "documents"
+MAX_WORDS_PER_CHUNK = 80
 
 
 def read_txt_files_from_documents_folder():
@@ -34,8 +35,29 @@ def split_text_into_chunks(text):
     for paragraph in paragraphs:
         clean_paragraph = paragraph.strip()
 
-        if clean_paragraph:
-            chunks.append(clean_paragraph)
+        if not clean_paragraph:
+            continue
+
+        paragraph_chunks = split_long_text_by_word_count(clean_paragraph)
+
+        for chunk in paragraph_chunks:
+            chunks.append(chunk)
+
+    return chunks
+
+
+def split_long_text_by_word_count(text):
+    words = text.split()
+
+    if len(words) <= MAX_WORDS_PER_CHUNK:
+        return [text]
+
+    chunks = []
+
+    for start_index in range(0, len(words), MAX_WORDS_PER_CHUNK):
+        chunk_words = words[start_index:start_index + MAX_WORDS_PER_CHUNK]
+        chunk = " ".join(chunk_words)
+        chunks.append(chunk)
 
     return chunks
 
