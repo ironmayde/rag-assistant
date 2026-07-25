@@ -1,3 +1,5 @@
+import re
+
 from foundry_local_sdk import Configuration, FoundryLocalManager
 from foundry_local_sdk.exception import FoundryLocalException
 
@@ -20,6 +22,38 @@ def get_foundry_manager():
         _manager_initialized = True
 
     return FoundryLocalManager.instance
+
+
+def split_context_into_sentences(context):
+    sentences = re.split(r"(?<=[.!?])\s+", context.strip())
+
+    clean_sentences = []
+
+    for sentence in sentences:
+        clean_sentence = sentence.strip()
+
+        if clean_sentence:
+            clean_sentences.append(clean_sentence)
+
+    return clean_sentences
+
+
+def create_key_points_from_context(context, max_points=3):
+    sentences = split_context_into_sentences(context)
+
+    key_points = []
+
+    for sentence in sentences[:max_points]:
+        key_points.append(sentence)
+
+    return key_points
+
+
+def create_exam_note(question, filename):
+    return (
+        f"Remember this topic from {filename}; it may be useful for definition, "
+        f"explanation, or short-answer exam questions."
+    )
 
 
 def generate_foundry_answer(question, best_chunk):
@@ -66,17 +100,23 @@ Question:
 
     model.unload()
 
+    key_points = create_key_points_from_context(content)
+    exam_note = create_exam_note(question, filename)
+
+    key_points_text = ""
+
+    for point in key_points:
+        key_points_text += f"- {point}\n"
+
     return f"""
 Answer:
 Short answer:
 - {short_answer}
 
 Key points:
-- This answer was generated from the selected document chunk.
-- The response is based only on the retrieved context.
-
+{key_points_text}
 Exam note:
-- Review the source file and chunk if you want to check the original note.
+- {exam_note}
 
 Source file: {filename}
 Source chunk ID: {chunk_id}
