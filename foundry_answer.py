@@ -89,7 +89,7 @@ def create_exam_note(filename):
     )
 
 
-def generate_model_short_answer(question, content):
+def generate_model_response(task_instruction, content, question):
     manager = get_foundry_manager()
     model = manager.catalog.get_model("qwen2.5-0.5b")
 
@@ -106,7 +106,8 @@ def generate_model_short_answer(question, content):
                 "You are a local RAG study assistant. "
                 "Use only the provided context. "
                 "Do not add outside knowledge. "
-                "Write only one short answer sentence."
+                "Do not invent details. "
+                f"{task_instruction}"
             )
         },
         {
@@ -115,10 +116,8 @@ def generate_model_short_answer(question, content):
 Context:
 {content}
 
-Question:
+User request:
 {question}
-
-Write one short answer sentence using only the context.
 """
         }
     ])
@@ -136,7 +135,8 @@ def generate_foundry_answer(question, best_chunk):
 
     chunk_id, filename, content, score = best_chunk
 
-    model_answer = generate_model_short_answer(question, content)
+    task_instruction = "Write only one clear and short answer sentence."
+    model_answer = generate_model_response(task_instruction, content, question)
 
     if is_answer_too_risky(model_answer, content):
         short_answer = create_safe_short_answer(content)
@@ -166,6 +166,51 @@ Exam note:
 Grounding note:
 - {grounding_note}
 
+Source file: {filename}
+Source chunk ID: {chunk_id}
+Relevance score: {score}
+"""
+
+
+def generate_foundry_summary(topic, best_chunk):
+    if best_chunk is None:
+        return "I could not find relevant information in the documents."
+
+    chunk_id, filename, content, score = best_chunk
+
+    key_points = create_key_points_from_context(content)
+
+    summary_text = ""
+
+    for point in key_points:
+        summary_text += f"- {point}\n"
+
+    return f"""
+Summary:
+{summary_text}
+Source file: {filename}
+Source chunk ID: {chunk_id}
+Relevance score: {score}
+"""
+
+
+def generate_foundry_quiz(topic, best_chunk):
+    if best_chunk is None:
+        return "I could not find relevant information in the documents."
+
+    chunk_id, filename, content, score = best_chunk
+
+    key_points = create_key_points_from_context(content)
+
+    quiz_text = ""
+
+    for index, point in enumerate(key_points, start=1):
+        quiz_text += f"Question {index}: What should you remember about this topic?\n"
+        quiz_text += f"Answer {index}: {point}\n\n"
+
+    return f"""
+Quiz:
+{quiz_text}
 Source file: {filename}
 Source chunk ID: {chunk_id}
 Relevance score: {score}

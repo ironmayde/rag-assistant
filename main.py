@@ -1,6 +1,10 @@
 from database import read_chunks_from_database
 from embeddings import create_simple_embedding, calculate_similarity
-from foundry_answer import generate_foundry_answer
+from foundry_answer import (
+    generate_foundry_answer,
+    generate_foundry_summary,
+    generate_foundry_quiz
+)
 from search import clean_text
 
 
@@ -28,24 +32,71 @@ def find_best_chunk_with_saved_embeddings(question, chunks):
     return best_chunk
 
 
+def show_help():
+    print("\nType one of these commands:")
+    print("ask <your question>")
+    print("summarize <topic>")
+    print("quiz <topic>")
+    print("exit")
+    print("\nExamples:")
+    print("ask what is rag")
+    print("summarize central limit theorem")
+    print("quiz limited company")
+
+
 def main():
     print("RAG Assistant project started!")
-    print("\n--- Foundry Local RAG Chat ---")
-    print("Type 'exit' to close the assistant.\n")
+    print("\n--- Foundry Local Study Assistant ---")
 
     chunks = read_chunks_from_database()
 
-    while True:
-        question = input("Ask a question: ")
+    show_help()
 
-        if question.lower() == "exit":
+    while True:
+        user_input = input("\nEnter command: ").strip()
+
+        if user_input.lower() == "exit":
             print("Assistant closed.")
             break
 
-        best_chunk = find_best_chunk_with_saved_embeddings(question, chunks)
-        answer = generate_foundry_answer(question, best_chunk)
+        elif user_input.lower() == "help":
+            show_help()
 
-        print(answer)
+        elif user_input.lower().startswith("ask "):
+            question = user_input[4:].strip()
+
+            if not question:
+                print("Please write a question after 'ask'.")
+                continue
+
+            best_chunk = find_best_chunk_with_saved_embeddings(question, chunks)
+            answer = generate_foundry_answer(question, best_chunk)
+            print(answer)
+
+        elif user_input.lower().startswith("summarize "):
+            topic = user_input[10:].strip()
+
+            if not topic:
+                print("Please write a topic after 'summarize'.")
+                continue
+
+            best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
+            summary = generate_foundry_summary(topic, best_chunk)
+            print(summary)
+
+        elif user_input.lower().startswith("quiz "):
+            topic = user_input[5:].strip()
+
+            if not topic:
+                print("Please write a topic after 'quiz'.")
+                continue
+
+            best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
+            quiz = generate_foundry_quiz(topic, best_chunk)
+            print(quiz)
+
+        else:
+            print("Invalid command. Type 'help' to see examples.")
 
 
 if __name__ == "__main__":
