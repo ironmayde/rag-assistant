@@ -49,19 +49,47 @@ def create_key_points_from_context(context, max_points=3):
     return key_points
 
 
-def create_exam_note(question, filename):
+def create_safe_short_answer(context):
+    sentences = split_context_into_sentences(context)
+
+    if not sentences:
+        return "I could not find this information in the document."
+
+    return sentences[0]
+
+
+def is_answer_too_risky(answer, context):
+    if len(answer) > 350:
+        return True
+
+    context_words = set(re.findall(r"\b[a-zA-Z]{4,}\b", context.lower()))
+    answer_words = re.findall(r"\b[a-zA-Z]{4,}\b", answer.lower())
+
+    if not answer_words:
+        return True
+
+    outside_words = []
+
+    for word in answer_words:
+        if word not in context_words:
+            outside_words.append(word)
+
+    outside_ratio = len(outside_words) / len(answer_words)
+
+    if outside_ratio > 0.45:
+        return True
+
+    return False
+
+
+def create_exam_note(filename):
     return (
         f"Remember this topic from {filename}; it may be useful for definition, "
         f"explanation, or short-answer exam questions."
     )
 
 
-def generate_foundry_answer(question, best_chunk):
-    if best_chunk is None:
-        return "I could not find relevant information in the documents."
-
-    chunk_id, filename, content, score = best_chunk
-
+def generate_model_short_answer(question, content):
     manager = get_foundry_manager()
     model = manager.catalog.get_model("qwen2.5-0.5b")
 
@@ -76,12 +104,9 @@ def generate_foundry_answer(question, best_chunk):
             "role": "system",
             "content": (
                 "You are a local RAG study assistant. "
-                "Answer the user's question only using the provided context. "
-                "Do not use outside knowledge. "
-                "Do not invent details. "
-                "If the answer is not in the context, say: "
-                "'I could not find this information in the document.' "
-                "Write a clear and concise answer for a student."
+                "Use only the provided context. "
+                "Do not add outside knowledge. "
+                "Write only one short answer sentence."
             )
         },
         {
@@ -92,16 +117,36 @@ Context:
 
 Question:
 {question}
+
+Write one short answer sentence using only the context.
 """
         }
     ])
 
-    short_answer = response.choices[0].message.content.strip()
+    answer = response.choices[0].message.content.strip()
 
     model.unload()
 
+    return answer
+
+
+def generate_foundry_answer(question, best_chunk):
+    if best_chunk is None:
+        return "I could not find relevant information in the documents."
+
+    chunk_id, filename, content, score = best_chunk
+
+    model_answer = generate_model_short_answer(question, content)
+
+    if is_answer_too_risky(model_answer, content):
+        short_answer = create_safe_short_answer(content)
+        grounding_note = "The model answer was simplified to stay closer to the retrieved context."
+    else:
+        short_answer = model_answer
+        grounding_note = "The model answer passed the context-grounding check."
+
     key_points = create_key_points_from_context(content)
-    exam_note = create_exam_note(question, filename)
+    exam_note = create_exam_note(filename)
 
     key_points_text = ""
 
@@ -117,6 +162,9 @@ Key points:
 {key_points_text}
 Exam note:
 - {exam_note}
+
+Grounding note:
+- {grounding_note}
 
 Source file: {filename}
 Source chunk ID: {chunk_id}
