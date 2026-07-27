@@ -18,6 +18,7 @@ This project was developed as part of the "Building Your First Local RAG Applica
 * Searches for the most relevant chunk based on the user request
 * Uses Microsoft Foundry Local to generate answers
 * Shows the source file, source chunk ID, and relevance score
+* Supports direct questions
 * Supports study commands:
 
   * ask a question
@@ -45,7 +46,6 @@ rag-assistant/
 │   ├── statistics_notes.txt
 │   └── commercial_law_notes.txt
 │
-├── answer.py
 ├── database.py
 ├── embeddings.py
 ├── foundry_answer.py
@@ -65,7 +65,7 @@ rag-assistant/
 3. The text is split into smaller chunks.
 4. Each chunk is stored in a SQLite database with its source filename.
 5. A simple embedding is created and stored for each chunk.
-6. The user enters a study command.
+6. The user enters a question or a study command.
 7. The system finds the most relevant chunk.
 8. The selected chunk is sent as context to a Foundry Local model.
 9. The assistant generates a grounded study response.
@@ -114,46 +114,44 @@ Run the chatbot:
 python main.py
 ```
 
-The assistant supports these commands:
+The assistant supports direct questions and study commands.
+
+## Supported Inputs
+
+Direct question:
 
 ```text
-ask <your question>
-summarize <topic>
-quiz <topic>
-flashcard <topic>
-help
-exit
+what is rag
 ```
 
-## Example Commands
-
-Ask a question:
+Ask command:
 
 ```text
 ask what is rag
 ```
 
-Summarize a topic:
+Summarize command:
 
 ```text
 summarize central limit theorem
 ```
 
-Generate a quiz:
+Quiz command:
 
 ```text
 quiz limited company
 ```
 
-Generate flashcards:
+Flashcard command:
 
 ```text
 flashcard central limit theorem
 ```
 
-Exit the assistant:
+Other commands:
 
 ```text
+help
 exit
 ```
 
@@ -242,7 +240,7 @@ This model was selected because it is lightweight and suitable for local testing
 
 ## Current Status
 
-The project currently works as a local RAG study assistant. It can retrieve relevant context from multiple local notes and support question answering, summarization, quiz generation, and flashcard generation.
+The project currently works as a local RAG study assistant. It can retrieve relevant context from multiple local notes and support direct questions, question answering, summarization, quiz generation, and flashcard generation.
 
 ## Future Improvements
 
@@ -251,5 +249,6 @@ The project currently works as a local RAG study assistant. It can retrieve rele
 * Improve quiz question variety
 * Add a Streamlit web interface
 * Add evaluation metrics for answer quality
+
 
 
