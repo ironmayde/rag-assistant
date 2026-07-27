@@ -41,11 +41,37 @@ def show_help():
     print("flashcard <topic>")
     print("help")
     print("exit")
+    print("\nYou can also type a normal question directly.")
     print("\nExamples:")
+    print("what is rag")
     print("ask what is rag")
     print("summarize central limit theorem")
     print("quiz limited company")
     print("flashcard central limit theorem")
+
+
+def handle_question(question, chunks):
+    best_chunk = find_best_chunk_with_saved_embeddings(question, chunks)
+    answer = generate_foundry_answer(question, best_chunk)
+    print(answer)
+
+
+def handle_summary(topic, chunks):
+    best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
+    summary = generate_foundry_summary(topic, best_chunk)
+    print(summary)
+
+
+def handle_quiz(topic, chunks):
+    best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
+    quiz = generate_foundry_quiz(topic, best_chunk)
+    print(quiz)
+
+
+def handle_flashcards(topic, chunks):
+    best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
+    flashcards = generate_foundry_flashcards(topic, best_chunk)
+    print(flashcards)
 
 
 def main():
@@ -57,61 +83,59 @@ def main():
     show_help()
 
     while True:
-        user_input = input("\nEnter command: ").strip()
+        user_input = input("\nEnter command or question: ").strip()
 
-        if user_input.lower() == "exit":
+        if not user_input:
+            print("Please write a command or question.")
+            continue
+
+        lower_input = user_input.lower()
+
+        if lower_input == "exit":
             print("Assistant closed.")
             break
 
-        elif user_input.lower() == "help":
+        elif lower_input == "help":
             show_help()
 
-        elif user_input.lower().startswith("ask "):
+        elif lower_input.startswith("ask "):
             question = user_input[4:].strip()
 
             if not question:
                 print("Please write a question after 'ask'.")
                 continue
 
-            best_chunk = find_best_chunk_with_saved_embeddings(question, chunks)
-            answer = generate_foundry_answer(question, best_chunk)
-            print(answer)
+            handle_question(question, chunks)
 
-        elif user_input.lower().startswith("summarize "):
+        elif lower_input.startswith("summarize "):
             topic = user_input[10:].strip()
 
             if not topic:
                 print("Please write a topic after 'summarize'.")
                 continue
 
-            best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
-            summary = generate_foundry_summary(topic, best_chunk)
-            print(summary)
+            handle_summary(topic, chunks)
 
-        elif user_input.lower().startswith("quiz "):
+        elif lower_input.startswith("quiz "):
             topic = user_input[5:].strip()
 
             if not topic:
                 print("Please write a topic after 'quiz'.")
                 continue
 
-            best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
-            quiz = generate_foundry_quiz(topic, best_chunk)
-            print(quiz)
+            handle_quiz(topic, chunks)
 
-        elif user_input.lower().startswith("flashcard "):
+        elif lower_input.startswith("flashcard "):
             topic = user_input[10:].strip()
 
             if not topic:
                 print("Please write a topic after 'flashcard'.")
                 continue
 
-            best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
-            flashcards = generate_foundry_flashcards(topic, best_chunk)
-            print(flashcards)
+            handle_flashcards(topic, chunks)
 
         else:
-            print("Invalid command. Type 'help' to see examples.")
+            handle_question(user_input, chunks)
 
 
 if __name__ == "__main__":
