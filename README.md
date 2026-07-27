@@ -23,6 +23,7 @@ This project was developed as part of the "Building Your First Local RAG Applica
   * ask a question
   * summarize a topic
   * generate a quiz
+  * generate flashcards
 * Runs locally on the computer
 
 ## Technologies Used
@@ -119,6 +120,7 @@ The assistant supports these commands:
 ask <your question>
 summarize <topic>
 quiz <topic>
+flashcard <topic>
 help
 exit
 ```
@@ -141,6 +143,12 @@ Generate a quiz:
 
 ```text
 quiz limited company
+```
+
+Generate flashcards:
+
+```text
+flashcard central limit theorem
 ```
 
 Exit the assistant:
@@ -197,6 +205,19 @@ Source chunk ID: 1
 Relevance score: 2
 ```
 
+## Example Flashcard Output
+
+```text
+Flashcards:
+Card 1
+Q: What should you remember?
+A: Central Limit Theorem says that when the sample size is large enough, the sampling distribution of the sample mean becomes approximately normal.
+
+Source file: statistics_notes.txt
+Source chunk ID: 11
+Relevance score: 3
+```
+
 ## Foundry Local Setup Note
 
 During setup, Foundry Local initially failed with the following error:
@@ -221,15 +242,14 @@ This model was selected because it is lightweight and suitable for local testing
 
 ## Current Status
 
-The project currently works as a local RAG study assistant. It can retrieve relevant context from multiple local notes and support question answering, summarization, and quiz generation.
+The project currently works as a local RAG study assistant. It can retrieve relevant context from multiple local notes and support question answering, summarization, quiz generation, and flashcard generation.
 
 ## Future Improvements
 
 * Add support for more file types such as PDF and DOCX
 * Improve the retrieval system with real embedding models
-* Add flashcard generation
-* Add a Streamlit web interface
 * Improve quiz question variety
+* Add a Streamlit web interface
 * Add evaluation metrics for answer quality
 
 
