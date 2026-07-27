@@ -215,3 +215,27 @@ Source file: {filename}
 Source chunk ID: {chunk_id}
 Relevance score: {score}
 """
+
+
+def generate_foundry_flashcards(topic, best_chunk):
+    if best_chunk is None:
+        return "I could not find relevant information in the documents."
+
+    chunk_id, filename, content, score = best_chunk
+
+    key_points = create_key_points_from_context(content)
+
+    flashcards_text = ""
+
+    for index, point in enumerate(key_points, start=1):
+        flashcards_text += f"Card {index}\n"
+        flashcards_text += "Q: What should you remember?\n"
+        flashcards_text += f"A: {point}\n\n"
+
+    return f"""
+Flashcards:
+{flashcards_text}
+Source file: {filename}
+Source chunk ID: {chunk_id}
+Relevance score: {score}
+"""

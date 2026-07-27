@@ -3,7 +3,8 @@ from embeddings import create_simple_embedding, calculate_similarity
 from foundry_answer import (
     generate_foundry_answer,
     generate_foundry_summary,
-    generate_foundry_quiz
+    generate_foundry_quiz,
+    generate_foundry_flashcards
 )
 from search import clean_text
 
@@ -37,11 +38,14 @@ def show_help():
     print("ask <your question>")
     print("summarize <topic>")
     print("quiz <topic>")
+    print("flashcard <topic>")
+    print("help")
     print("exit")
     print("\nExamples:")
     print("ask what is rag")
     print("summarize central limit theorem")
     print("quiz limited company")
+    print("flashcard central limit theorem")
 
 
 def main():
@@ -94,6 +98,17 @@ def main():
             best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
             quiz = generate_foundry_quiz(topic, best_chunk)
             print(quiz)
+
+        elif user_input.lower().startswith("flashcard "):
+            topic = user_input[10:].strip()
+
+            if not topic:
+                print("Please write a topic after 'flashcard'.")
+                continue
+
+            best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
+            flashcards = generate_foundry_flashcards(topic, best_chunk)
+            print(flashcards)
 
         else:
             print("Invalid command. Type 'help' to see examples.")
