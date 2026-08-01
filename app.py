@@ -13,64 +13,193 @@ from foundry_answer import (
 st.set_page_config(
     page_title="Local RAG Study Assistant",
     page_icon="📚",
-    layout="centered"
+    layout="wide"
+)
+
+
+def format_result_for_markdown(result):
+    formatted_lines = []
+
+    headings = {
+        "Answer:": "## Answer",
+        "Short answer:": "### Short answer",
+        "Key points:": "### Key points",
+        "Exam note:": "### Exam note",
+        "Grounding note:": "### Grounding note",
+        "Summary:": "## Summary",
+        "Quiz:": "## Quiz",
+        "Flashcards:": "## Flashcards",
+        "Sources:": "### Retrieved sources"
+    }
+
+    for line in result.strip().splitlines():
+        clean_line = line.strip()
+
+        if not clean_line:
+            formatted_lines.append("")
+            continue
+
+        if clean_line in headings:
+            formatted_lines.append(headings[clean_line])
+
+        elif clean_line.startswith("Question "):
+            formatted_lines.append(f"**{clean_line}**")
+
+        elif clean_line.startswith("Answer "):
+            formatted_lines.append(clean_line)
+
+        elif clean_line.startswith("Card "):
+            formatted_lines.append(f"#### {clean_line}")
+
+        elif clean_line.startswith("Q:"):
+            formatted_lines.append(f"**{clean_line}**")
+
+        elif clean_line.startswith("A:"):
+            formatted_lines.append(clean_line)
+
+        else:
+            formatted_lines.append(clean_line)
+
+    return "\n\n".join(formatted_lines)
+
+
+st.markdown(
+    """
+    <style>
+        .block-container {
+            max-width: 1100px;
+            padding-top: 2rem;
+            padding-bottom: 3rem;
+        }
+
+        div[data-testid="stMetric"] {
+            background-color: rgba(120, 120, 120, 0.08);
+            border: 1px solid rgba(120, 120, 120, 0.18);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        div.stButton > button {
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        div[data-testid="stTextArea"] textarea {
+            border-radius: 10px;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
 )
 
 
 st.title("📚 Local RAG Study Assistant")
 
 st.write(
-    "Ask questions and create study materials from your local notes "
-    "with Microsoft Foundry Local."
+    "Study from your own local notes with semantic vector search "
+    "and on-device artificial intelligence."
 )
 
 st.caption(
-    "Semantic vector search • Local AI • SQLite • Source-grounded answers"
+    "Microsoft Foundry Local • SQLite • Top-k retrieval • Offline capable"
 )
+
+
+try:
+    chunks = read_chunks_from_database()
+
+except Exception as error:
+    st.error("The local document database could not be opened.")
+
+    with st.expander("Technical details"):
+        st.exception(error)
+
+    st.stop()
+
+
+document_names = []
+
+for chunk_id, filename, content, embedding in chunks:
+    if filename not in document_names:
+        document_names.append(filename)
+
+
+metric_column1, metric_column2, metric_column3 = st.columns(3)
+
+with metric_column1:
+    st.metric("Documents", len(document_names))
+
+with metric_column2:
+    st.metric("Stored chunks", len(chunks))
+
+with metric_column3:
+    st.metric("Top-k retrieval", 2)
+
+
+st.divider()
 
 
 with st.sidebar:
-    st.header("About")
+    st.header("⚙️ System information")
 
-    st.write(
-        "This assistant retrieves relevant information from local "
-        "study documents and uses an on-device model to generate a response."
+    st.subheader("Local models")
+
+    st.write("**Embedding model**")
+    st.code("qwen3-embedding-0.6b", language=None)
+
+    st.write("**Chat model**")
+    st.code("qwen2.5-0.5b", language=None)
+
+    st.subheader("Retrieval settings")
+
+    st.write("Top-k chunks: **2**")
+    st.write("Minimum relevance score: **0.35**")
+
+    st.subheader("Available documents")
+
+    for document_name in document_names:
+        st.write(f"• {document_name}")
+
+    st.divider()
+
+    st.success(
+        "The application can run locally after the models "
+        "have been downloaded."
     )
 
-    st.subheader("Models")
 
-    st.write("**Embedding:** qwen3-embedding-0.6b")
-    st.write("**Chat:** qwen2.5-0.5b")
-
-    st.subheader("Retrieval")
-
-    st.write("Top-k chunks: 2")
-    st.write("Minimum relevance score: 0.35")
+mode_descriptions = {
+    "Ask": "Answer a question using retrieved information.",
+    "Summarize": "Create a concise summary of a topic.",
+    "Quiz": "Generate questions and answers for revision.",
+    "Flashcards": "Create quick question-and-answer cards."
+}
 
 
-mode = st.selectbox(
-    "Study mode",
-    [
-        "Ask",
-        "Summarize",
-        "Quiz",
-        "Flashcards"
-    ]
-)
+with st.form("study_assistant_form"):
+    mode = st.selectbox(
+        "Study mode",
+        [
+            "Ask",
+            "Summarize",
+            "Quiz",
+            "Flashcards"
+        ]
+    )
 
+    st.caption(mode_descriptions[mode])
 
-request_text = st.text_area(
-    "Question or topic",
-    placeholder="Example: What is RAG?",
-    height=120
-)
+    request_text = st.text_area(
+        "Question or topic",
+        placeholder="Example: What is RAG?",
+        height=130
+    )
 
-
-generate_button = st.button(
-    "Generate",
-    type="primary",
-    use_container_width=True
-)
+    generate_button = st.form_submit_button(
+        "Generate",
+        type="primary",
+        use_container_width=True
+    )
 
 
 if generate_button:
@@ -84,8 +213,6 @@ if generate_button:
             "Searching local documents and generating your result..."
         ):
             try:
-                chunks = read_chunks_from_database()
-
                 relevant_chunks = (
                     find_top_chunks_with_saved_embeddings(
                         clean_request,
@@ -93,32 +220,48 @@ if generate_button:
                     )
                 )
 
-                if mode == "Ask":
-                    result = generate_foundry_answer(
-                        clean_request,
-                        relevant_chunks
-                    )
-
-                elif mode == "Summarize":
-                    result = generate_foundry_summary(
-                        clean_request,
-                        relevant_chunks
-                    )
-
-                elif mode == "Quiz":
-                    result = generate_foundry_quiz(
-                        clean_request,
-                        relevant_chunks
+                if not relevant_chunks:
+                    st.info(
+                        "I could not find relevant information "
+                        "in the documents."
                     )
 
                 else:
-                    result = generate_foundry_flashcards(
-                        clean_request,
-                        relevant_chunks
+                    if mode == "Ask":
+                        result = generate_foundry_answer(
+                            clean_request,
+                            relevant_chunks
+                        )
+
+                    elif mode == "Summarize":
+                        result = generate_foundry_summary(
+                            clean_request,
+                            relevant_chunks
+                        )
+
+                    elif mode == "Quiz":
+                        result = generate_foundry_quiz(
+                            clean_request,
+                            relevant_chunks
+                        )
+
+                    else:
+                        result = generate_foundry_flashcards(
+                            clean_request,
+                            relevant_chunks
+                        )
+
+                    st.success(
+                        f"{len(relevant_chunks)} relevant source "
+                        "chunk(s) retrieved."
                     )
 
-                st.subheader("Result")
-                st.text(result.strip())
+                    with st.container(border=True):
+                        formatted_result = (
+                            format_result_for_markdown(result)
+                        )
+
+                        st.markdown(formatted_result)
 
             except Exception as error:
                 st.error(
