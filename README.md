@@ -1,52 +1,42 @@
 # Local RAG Study Assistant with Microsoft Foundry Local
 
-This project is a local Retrieval-Augmented Generation (RAG) study assistant built with Python, SQLite, and Microsoft Foundry Local.
+A local Retrieval-Augmented Generation (RAG) study assistant built with Python, SQLite, Streamlit, and Microsoft Foundry Local.
 
-The assistant searches through local study documents using semantic vector search and generates grounded answers with an on-device language model.
+The application retrieves relevant information from local study notes using semantic vector search and generates source-grounded answers with an on-device language model.
 
-After the required models are downloaded, the application can run locally without sending study documents or questions to a cloud-based model.
+After the required models are downloaded, the assistant can run without an internet connection.
 
 ## Project Goal
 
-The goal of this project is to build a local study assistant that can answer questions using a collection of course notes.
+The goal of this project is to build an offline-capable study assistant that answers questions and creates study materials using the student’s own local documents.
 
-The application demonstrates the main stages of a RAG pipeline:
+The application demonstrates the three main stages of RAG:
 
 1. Retrieve relevant information from local documents.
-2. Add the retrieved information to the model’s context.
+2. Augment the model input with the retrieved context.
 3. Generate an answer grounded in that context.
 
 ## Features
 
-- Reads local `.txt` documents from the `documents` folder
-- Splits documents into smaller chunks
+- Reads `.txt` documents from a local folder
+- Splits documents into manageable chunks
 - Generates real embeddings with Microsoft Foundry Local
-- Uses the `qwen3-embedding-0.6b` embedding model
 - Stores 1024-dimensional vectors in SQLite
-- Uses cosine similarity for semantic vector search
-- Rejects unrelated questions using a minimum relevance threshold
-- Uses the `qwen2.5-0.5b` chat model to generate answers
-- Applies a grounding check to reduce unsupported model output
-- Displays the source filename, chunk ID, and relevance score
-- Supports normal questions and multiple study modes
-- Runs locally on the user’s computer
+- Uses cosine similarity for semantic search
+- Retrieves the two most relevant chunks with top-k search
+- Rejects unrelated questions using a relevance threshold
+- Generates answers with a local chat model
+- Applies a grounding check to reduce unsupported output
+- Displays source filenames, chunk IDs, and relevance scores
+- Supports Ask, Summarize, Quiz, and Flashcards modes
+- Includes both CLI and Streamlit interfaces
+- Runs locally after the models have been downloaded
 
-## Supported Study Modes
+## Technologies
 
-The assistant supports:
-
-- Direct question answering
-- `ask`
-- `summarize`
-- `quiz`
-- `flashcard`
-- `help`
-- `exit`
-
-## Technologies Used
-
-- Python
+- Python 3.12
 - SQLite
+- Streamlit
 - Microsoft Foundry Local
 - Foundry Local SDK
 - Qwen3 Embedding 0.6B
@@ -54,6 +44,24 @@ The assistant supports:
 - Cosine similarity
 - JSON
 - Git and GitHub
+
+## Models
+
+### Embedding model
+
+```text
+qwen3-embedding-0.6b
+```
+
+This model converts documents and user requests into 1024-dimensional vectors for semantic similarity search.
+
+### Chat model
+
+```text
+qwen2.5-0.5b
+```
+
+This lightweight local model generates answers from the retrieved context.
 
 ## Project Structure
 
@@ -65,6 +73,7 @@ rag-assistant/
 │   ├── project_notes.txt
 │   └── statistics_notes.txt
 │
+├── app.py
 ├── database.py
 ├── embedding_test.py
 ├── embeddings.py
@@ -81,21 +90,15 @@ rag-assistant/
 
 ### 1. Document ingestion
 
-`ingest.py` reads every `.txt` file in the `documents` folder.
+`ingest.py` reads all `.txt` files from the `documents` folder and divides their contents into smaller chunks.
 
-The documents are divided into smaller chunks. Long text is split using a maximum word count so that each database entry contains a manageable piece of information.
+### 2. Document embeddings
 
-### 2. Embedding generation
+The chunks are sent to `qwen3-embedding-0.6b`.
 
-The chunks are sent to the Foundry Local embedding model:
+Each chunk is converted into a 1024-dimensional numerical vector.
 
-```text
-qwen3-embedding-0.6b
-```
-
-The model converts each chunk into a 1024-dimensional numerical vector.
-
-### 3. Local vector storage
+### 3. SQLite storage
 
 Each database record contains:
 
@@ -104,19 +107,29 @@ Each database record contains:
 - Chunk content
 - Embedding vector
 
-The vectors are converted to JSON and stored in the local SQLite database.
+Embedding vectors are stored as JSON in `rag.db`.
 
 ### 4. Query embedding
 
-When the user enters a question or topic, the same embedding model converts the request into a 1024-dimensional vector.
+The user’s question or topic is converted into a vector using the same embedding model.
 
-### 5. Cosine similarity search
+### 5. Cosine similarity
 
-The query vector is compared with every stored chunk vector using cosine similarity.
+The query vector is compared with every stored document vector using cosine similarity.
 
-The chunk with the highest similarity score is selected.
+Values closer to `1.0` indicate greater semantic similarity.
 
-### 6. Relevance threshold
+### 6. Top-k retrieval
+
+The results are sorted from highest to lowest similarity.
+
+The application retrieves up to two relevant chunks:
+
+```text
+TOP_K = 2
+```
+
+### 7. Relevance threshold
 
 The current minimum relevance score is:
 
@@ -124,25 +137,26 @@ The current minimum relevance score is:
 0.35
 ```
 
-If the best result is below this value, the assistant does not send an unrelated chunk to the chat model.
+Results below this value are rejected.
 
-Instead, it displays:
+For an unrelated question, the assistant displays:
 
 ```text
 I could not find relevant information in the documents.
 ```
 
-### 7. Grounded answer generation
+### 8. Grounded generation
 
-The selected chunk and the user’s question are sent to the local chat model:
+The retrieved chunks are combined and sent to the local chat model as context.
 
-```text
-qwen2.5-0.5b
-```
+The model is instructed to:
 
-The system prompt tells the model to use only information explicitly stated in the retrieved context.
+- Use only facts explicitly stated in the context
+- Avoid outside knowledge
+- Avoid invented details
+- Avoid unsupported causes, trends, or comparisons
 
-A second grounding check examines the generated answer. If the answer contains too much unsupported wording, the assistant replaces it with a safer sentence taken directly from the retrieved context.
+A second grounding check examines the generated answer. Risky answers are replaced with a safer sentence from the retrieved context.
 
 ## Installation
 
@@ -152,13 +166,13 @@ Create a virtual environment:
 py -3.12 -m venv .venv
 ```
 
-Activate it on Windows:
+Activate the environment:
 
 ```bat
 .venv\Scripts\activate
 ```
 
-Install the required packages:
+Install the dependencies:
 
 ```bat
 pip install -r requirements.txt
@@ -166,9 +180,9 @@ pip install -r requirements.txt
 
 ## Preparing the Documents
 
-Add `.txt` study documents to the `documents` folder.
+Add `.txt` files to the `documents` folder.
 
-Then run:
+Run the ingestion pipeline:
 
 ```bat
 python ingest.py
@@ -188,160 +202,145 @@ Total chunks saved to database: 15
 Document ingestion completed successfully.
 ```
 
-The first run may download the embedding model. Once the required model is available locally, it can be reused.
+Run `ingest.py` again whenever a document is added, removed, or changed.
 
-Run `ingest.py` again whenever documents are added, removed, or changed.
+## Running the Streamlit Interface
 
-## Running the Assistant
+Start the web interface:
 
-Start the application:
+```bat
+streamlit run app.py
+```
+
+The application normally opens at:
+
+```text
+http://localhost:8501
+```
+
+The Streamlit interface includes:
+
+- Study mode selection
+- Question or topic input
+- Generate button
+- Document and chunk statistics
+- Model information
+- Top-k retrieval settings
+- Formatted answers and study materials
+- Retrieved source information
+
+Stop the application by pressing:
+
+```text
+Ctrl + C
+```
+
+## Running the CLI Interface
+
+The terminal-based interface is still available:
 
 ```bat
 python main.py
 ```
 
-## Usage Examples
+## Study Modes
 
-Direct question:
-
-```text
-what is rag
-```
-
-Ask command:
+### Ask
 
 ```text
-ask what is limited company
+What is RAG?
 ```
 
-Summary:
+### Summarize
 
 ```text
 summarize central limit theorem
 ```
 
-Quiz:
+### Quiz
 
 ```text
 quiz limited company
 ```
 
-Flashcards:
+### Flashcards
 
 ```text
 flashcard central limit theorem
 ```
 
-Show help:
+## Example Top-k Result
 
 ```text
-help
-```
-
-Close the assistant:
-
-```text
-exit
-```
-
-## Example Answer
-
-```text
-Answer:
-Short answer:
-- RAG means Retrieval-Augmented Generation.
-
-Key points:
-- RAG means Retrieval-Augmented Generation.
-- It retrieves relevant information, adds it as context, and generates an answer.
-
-Source file: project_notes.txt
-Source chunk ID: 38
-Relevance score: 0.7097
+Sources:
+- project_notes.txt | Chunk ID: 38 | Relevance score: 0.7097
+- project_notes.txt | Chunk ID: 36 | Relevance score: 0.5408
 ```
 
 Chunk IDs and relevance scores may change when the database is regenerated.
 
 ## Semantic Search Test
 
-The following question does not directly contain the phrase “Central Limit Theorem”:
+Question:
 
 ```text
 What happens to the distribution of averages when the sample size grows?
 ```
 
-The vector search system successfully retrieved the relevant chunk from:
+This question does not directly use the phrase “Central Limit Theorem,” but the system retrieved:
 
 ```text
-statistics_notes.txt
+statistics_notes.txt | Chunk ID: 41 | Relevance score: 0.7403
 ```
 
-Example relevance score:
-
-```text
-0.7403
-```
-
-This demonstrates that retrieval is based on semantic similarity rather than only exact keyword matches.
+This demonstrates semantic retrieval rather than exact keyword matching.
 
 ## Unknown Question Test
 
-The following question is not covered by the study documents:
+Question:
 
 ```text
 Who painted the Mona Lisa?
 ```
 
-Its best similarity score was below the minimum threshold, so the assistant returned:
+The best similarity score was below the minimum threshold, so the application returned:
 
 ```text
 I could not find relevant information in the documents.
 ```
 
+## Final Interface Tests
+
+The following features were successfully tested through Streamlit:
+
+- Ask mode
+- Summarize mode
+- Quiz mode
+- Flashcards mode
+- Top-k source display
+- Unknown question rejection
+- Empty input warning
+- Offline operation
+
 ## Testing Scripts
 
-Test the Foundry Local chat model:
+Test the local chat model:
 
 ```bat
 python foundry_test.py
 ```
 
-Test the Foundry Local embedding model:
+Test the embedding model:
 
 ```bat
 python embedding_test.py
 ```
 
-The embedding test displays the vector dimensions and several example values.
-
-## Models Used
-
-### Embedding model
-
-```text
-qwen3-embedding-0.6b
-```
-
-Purpose:
-
-- Convert documents and questions into numerical vectors
-- Support semantic similarity search
-- Produce 1024-dimensional embeddings
-
-### Chat model
-
-```text
-qwen2.5-0.5b
-```
-
-Purpose:
-
-- Generate short study answers from retrieved context
-- Run locally with relatively low hardware requirements
+The embedding test verifies that the model produces a 1024-dimensional vector.
 
 ## Foundry Local Setup Note
 
-During the initial setup, Foundry Local failed with this Windows error:
+During the initial setup, Foundry Local produced this Windows error:
 
 ```text
 [WinError 1114] A dynamic link library (DLL) initialization routine failed.
@@ -351,33 +350,34 @@ The problem was solved by installing or repairing Microsoft Visual C++ Redistrib
 
 ## Current Limitations
 
-- Only `.txt` documents are supported
-- All stored vectors are compared in Python, which is suitable for a small document collection
-- Only the highest-scoring chunk is currently used as context
-- The relevance threshold was selected using the current test collection
+- Only `.txt` files are currently supported
+- Cosine similarity is calculated in Python for every stored vector
+- The current approach is intended for a small document collection
+- The relevance threshold was selected using the current test documents
 - The lightweight chat model may produce simpler answers than larger models
-- Quiz and flashcard question variety is currently limited
+- Quiz questions currently use a basic repeated format
 
 ## Future Improvements
 
-- Retrieve multiple relevant chunks with top-k search
-- Add PDF and DOCX document support
-- Add a Streamlit web interface
-- Add automated evaluation test cases
-- Improve quiz and flashcard variety
+- Add PDF and DOCX support
+- Add automatic evaluation test cases
 - Add response-time measurements
-- Test the relevance threshold with a larger document collection
+- Improve quiz question variety
+- Add chat history
+- Test with a larger document collection
+- Add a dedicated vector database for larger datasets
 
 ## Current Status
 
-The project now works as a local RAG study assistant with:
+The project is a working local RAG study assistant with:
 
 - Real Foundry Local embeddings
 - SQLite vector storage
-- Cosine similarity search
-- Semantic retrieval
+- Cosine similarity
+- Top-k semantic retrieval
 - Relevance filtering
-- Grounded local answer generation
+- Grounded answer generation
+- CLI and Streamlit interfaces
 - Multiple study modes
 - Source information
 - Offline-capable local inference
