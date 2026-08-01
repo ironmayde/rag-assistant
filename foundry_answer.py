@@ -5,6 +5,7 @@ from foundry_local_sdk.exception import FoundryLocalException
 
 
 _manager_initialized = False
+MAX_OUTSIDE_WORD_RATIO = 0.20
 
 
 def get_foundry_manager():
@@ -62,8 +63,14 @@ def is_answer_too_risky(answer, context):
     if len(answer) > 350:
         return True
 
-    context_words = set(re.findall(r"\b[a-zA-Z]{4,}\b", context.lower()))
-    answer_words = re.findall(r"\b[a-zA-Z]{4,}\b", answer.lower())
+    context_words = set(
+        re.findall(r"\b[a-zA-Z]{4,}\b", context.lower())
+    )
+
+    answer_words = re.findall(
+        r"\b[a-zA-Z]{4,}\b",
+        answer.lower()
+    )
 
     if not answer_words:
         return True
@@ -76,7 +83,7 @@ def is_answer_too_risky(answer, context):
 
     outside_ratio = len(outside_words) / len(answer_words)
 
-    if outside_ratio > 0.45:
+    if outside_ratio > MAX_OUTSIDE_WORD_RATIO:
         return True
 
     return False
@@ -104,9 +111,12 @@ def generate_model_response(task_instruction, content, question):
             "role": "system",
             "content": (
                 "You are a local RAG study assistant. "
-                "Use only the provided context. "
+                "Use only facts explicitly stated in the provided context. "
                 "Do not add outside knowledge. "
                 "Do not invent details. "
+                "Do not infer causes, trends, changes, or comparisons "
+                "that are not directly written in the context. "
+                "Stay very close to the wording of the context. "
                 f"{task_instruction}"
             )
         },
@@ -135,15 +145,28 @@ def generate_foundry_answer(question, best_chunk):
 
     chunk_id, filename, content, score = best_chunk
 
-    task_instruction = "Write only one clear and short answer sentence."
-    model_answer = generate_model_response(task_instruction, content, question)
+    task_instruction = (
+        "Write only one clear and short answer sentence. "
+        "The sentence must be directly supported by the context."
+    )
+
+    model_answer = generate_model_response(
+        task_instruction,
+        content,
+        question
+    )
 
     if is_answer_too_risky(model_answer, content):
         short_answer = create_safe_short_answer(content)
-        grounding_note = "The model answer was simplified to stay closer to the retrieved context."
+        grounding_note = (
+            "The model answer was simplified to stay closer "
+            "to the retrieved context."
+        )
     else:
         short_answer = model_answer
-        grounding_note = "The model answer passed the context-grounding check."
+        grounding_note = (
+            "The model answer passed the context-grounding check."
+        )
 
     key_points = create_key_points_from_context(content)
     exam_note = create_exam_note(filename)
@@ -205,7 +228,10 @@ def generate_foundry_quiz(topic, best_chunk):
     quiz_text = ""
 
     for index, point in enumerate(key_points, start=1):
-        quiz_text += f"Question {index}: What should you remember about this topic?\n"
+        quiz_text += (
+            f"Question {index}: "
+            "What should you remember about this topic?\n"
+        )
         quiz_text += f"Answer {index}: {point}\n\n"
 
     return f"""
