@@ -25,6 +25,37 @@ def get_foundry_manager():
     return FoundryLocalManager.instance
 
 
+def combine_chunk_contents(relevant_chunks):
+    contents = []
+
+    for chunk_id, filename, content, score in relevant_chunks:
+        contents.append(content)
+
+    return "\n\n".join(contents)
+
+
+def create_sources_text(relevant_chunks):
+    source_lines = []
+
+    for chunk_id, filename, content, score in relevant_chunks:
+        source_lines.append(
+            f"- {filename} | Chunk ID: {chunk_id} | "
+            f"Relevance score: {score}"
+        )
+
+    return "\n".join(source_lines)
+
+
+def get_unique_filenames(relevant_chunks):
+    filenames = []
+
+    for chunk_id, filename, content, score in relevant_chunks:
+        if filename not in filenames:
+            filenames.append(filename)
+
+    return filenames
+
+
 def split_context_into_sentences(context):
     sentences = re.split(r"(?<=[.!?])\s+", context.strip())
 
@@ -89,10 +120,14 @@ def is_answer_too_risky(answer, context):
     return False
 
 
-def create_exam_note(filename):
+def create_exam_note(relevant_chunks):
+    filenames = get_unique_filenames(relevant_chunks)
+    filenames_text = ", ".join(filenames)
+
     return (
-        f"Remember this topic from {filename}; it may be useful for definition, "
-        f"explanation, or short-answer exam questions."
+        f"Remember this topic from {filenames_text}; "
+        "it may be useful for definition, explanation, "
+        "or short-answer exam questions."
     )
 
 
@@ -104,46 +139,47 @@ def generate_model_response(task_instruction, content, question):
         model.download()
 
     model.load()
-    client = model.get_chat_client()
 
-    response = client.complete_chat([
-        {
-            "role": "system",
-            "content": (
-                "You are a local RAG study assistant. "
-                "Use only facts explicitly stated in the provided context. "
-                "Do not add outside knowledge. "
-                "Do not invent details. "
-                "Do not infer causes, trends, changes, or comparisons "
-                "that are not directly written in the context. "
-                "Stay very close to the wording of the context. "
-                f"{task_instruction}"
-            )
-        },
-        {
-            "role": "user",
-            "content": f"""
+    try:
+        client = model.get_chat_client()
+
+        response = client.complete_chat([
+            {
+                "role": "system",
+                "content": (
+                    "You are a local RAG study assistant. "
+                    "Use only facts explicitly stated in the provided context. "
+                    "Do not add outside knowledge. "
+                    "Do not invent details. "
+                    "Do not infer causes, trends, changes, or comparisons "
+                    "that are not directly written in the context. "
+                    "Stay very close to the wording of the context. "
+                    f"{task_instruction}"
+                )
+            },
+            {
+                "role": "user",
+                "content": f"""
 Context:
 {content}
 
 User request:
 {question}
 """
-        }
-    ])
+            }
+        ])
 
-    answer = response.choices[0].message.content.strip()
+        return response.choices[0].message.content.strip()
 
-    model.unload()
+    finally:
+        model.unload()
 
-    return answer
 
-
-def generate_foundry_answer(question, best_chunk):
-    if best_chunk is None:
+def generate_foundry_answer(question, relevant_chunks):
+    if not relevant_chunks:
         return "I could not find relevant information in the documents."
 
-    chunk_id, filename, content, score = best_chunk
+    context = combine_chunk_contents(relevant_chunks)
 
     task_instruction = (
         "Write only one clear and short answer sentence. "
@@ -152,12 +188,12 @@ def generate_foundry_answer(question, best_chunk):
 
     model_answer = generate_model_response(
         task_instruction,
-        content,
+        context,
         question
     )
 
-    if is_answer_too_risky(model_answer, content):
-        short_answer = create_safe_short_answer(content)
+    if is_answer_too_risky(model_answer, context):
+        short_answer = create_safe_short_answer(context)
         grounding_note = (
             "The model answer was simplified to stay closer "
             "to the retrieved context."
@@ -168,8 +204,9 @@ def generate_foundry_answer(question, best_chunk):
             "The model answer passed the context-grounding check."
         )
 
-    key_points = create_key_points_from_context(content)
-    exam_note = create_exam_note(filename)
+    key_points = create_key_points_from_context(context)
+    exam_note = create_exam_note(relevant_chunks)
+    sources_text = create_sources_text(relevant_chunks)
 
     key_points_text = ""
 
@@ -189,19 +226,18 @@ Exam note:
 Grounding note:
 - {grounding_note}
 
-Source file: {filename}
-Source chunk ID: {chunk_id}
-Relevance score: {score}
+Sources:
+{sources_text}
 """
 
 
-def generate_foundry_summary(topic, best_chunk):
-    if best_chunk is None:
+def generate_foundry_summary(topic, relevant_chunks):
+    if not relevant_chunks:
         return "I could not find relevant information in the documents."
 
-    chunk_id, filename, content, score = best_chunk
-
-    key_points = create_key_points_from_context(content)
+    context = combine_chunk_contents(relevant_chunks)
+    key_points = create_key_points_from_context(context)
+    sources_text = create_sources_text(relevant_chunks)
 
     summary_text = ""
 
@@ -211,19 +247,18 @@ def generate_foundry_summary(topic, best_chunk):
     return f"""
 Summary:
 {summary_text}
-Source file: {filename}
-Source chunk ID: {chunk_id}
-Relevance score: {score}
+Sources:
+{sources_text}
 """
 
 
-def generate_foundry_quiz(topic, best_chunk):
-    if best_chunk is None:
+def generate_foundry_quiz(topic, relevant_chunks):
+    if not relevant_chunks:
         return "I could not find relevant information in the documents."
 
-    chunk_id, filename, content, score = best_chunk
-
-    key_points = create_key_points_from_context(content)
+    context = combine_chunk_contents(relevant_chunks)
+    key_points = create_key_points_from_context(context)
+    sources_text = create_sources_text(relevant_chunks)
 
     quiz_text = ""
 
@@ -237,19 +272,18 @@ def generate_foundry_quiz(topic, best_chunk):
     return f"""
 Quiz:
 {quiz_text}
-Source file: {filename}
-Source chunk ID: {chunk_id}
-Relevance score: {score}
+Sources:
+{sources_text}
 """
 
 
-def generate_foundry_flashcards(topic, best_chunk):
-    if best_chunk is None:
+def generate_foundry_flashcards(topic, relevant_chunks):
+    if not relevant_chunks:
         return "I could not find relevant information in the documents."
 
-    chunk_id, filename, content, score = best_chunk
-
-    key_points = create_key_points_from_context(content)
+    context = combine_chunk_contents(relevant_chunks)
+    key_points = create_key_points_from_context(context)
+    sources_text = create_sources_text(relevant_chunks)
 
     flashcards_text = ""
 
@@ -261,7 +295,6 @@ def generate_foundry_flashcards(topic, best_chunk):
     return f"""
 Flashcards:
 {flashcards_text}
-Source file: {filename}
-Source chunk ID: {chunk_id}
-Relevance score: {score}
+Sources:
+{sources_text}
 """

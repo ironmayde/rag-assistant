@@ -12,13 +12,13 @@ from foundry_answer import (
 
 
 MIN_RELEVANCE_SCORE = 0.35
+TOP_K = 2
 
 
-def find_best_chunk_with_saved_embeddings(question, chunks):
+def find_top_chunks_with_saved_embeddings(question, chunks):
     question_embedding = create_foundry_embedding(question)
 
-    best_chunk = None
-    best_score = -1.0
+    relevant_chunks = []
 
     for chunk_id, filename, content, chunk_embedding in chunks:
         if len(question_embedding) != len(chunk_embedding):
@@ -29,19 +29,22 @@ def find_best_chunk_with_saved_embeddings(question, chunks):
             chunk_embedding
         )
 
-        if score > best_score:
-            best_score = score
-            best_chunk = (
-                chunk_id,
-                filename,
-                content,
-                round(score, 4)
+        if score >= MIN_RELEVANCE_SCORE:
+            relevant_chunks.append(
+                (
+                    chunk_id,
+                    filename,
+                    content,
+                    round(score, 4)
+                )
             )
 
-    if best_score < MIN_RELEVANCE_SCORE:
-        return None
+    relevant_chunks.sort(
+        key=lambda chunk: chunk[3],
+        reverse=True
+    )
 
-    return best_chunk
+    return relevant_chunks[:TOP_K]
 
 
 def show_help():
@@ -62,26 +65,58 @@ def show_help():
 
 
 def handle_question(question, chunks):
-    best_chunk = find_best_chunk_with_saved_embeddings(question, chunks)
-    answer = generate_foundry_answer(question, best_chunk)
+    relevant_chunks = find_top_chunks_with_saved_embeddings(
+        question,
+        chunks
+    )
+
+    answer = generate_foundry_answer(
+        question,
+        relevant_chunks
+    )
+
     print(answer)
 
 
 def handle_summary(topic, chunks):
-    best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
-    summary = generate_foundry_summary(topic, best_chunk)
+    relevant_chunks = find_top_chunks_with_saved_embeddings(
+        topic,
+        chunks
+    )
+
+    summary = generate_foundry_summary(
+        topic,
+        relevant_chunks
+    )
+
     print(summary)
 
 
 def handle_quiz(topic, chunks):
-    best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
-    quiz = generate_foundry_quiz(topic, best_chunk)
+    relevant_chunks = find_top_chunks_with_saved_embeddings(
+        topic,
+        chunks
+    )
+
+    quiz = generate_foundry_quiz(
+        topic,
+        relevant_chunks
+    )
+
     print(quiz)
 
 
 def handle_flashcards(topic, chunks):
-    best_chunk = find_best_chunk_with_saved_embeddings(topic, chunks)
-    flashcards = generate_foundry_flashcards(topic, best_chunk)
+    relevant_chunks = find_top_chunks_with_saved_embeddings(
+        topic,
+        chunks
+    )
+
+    flashcards = generate_foundry_flashcards(
+        topic,
+        relevant_chunks
+    )
+
     print(flashcards)
 
 
