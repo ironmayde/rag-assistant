@@ -5,16 +5,20 @@ from foundry_local_sdk.exception import FoundryLocalException
 
 
 _manager_initialized = False
+EMBEDDING_BATCH_SIZE = 10
 
 
 def get_foundry_manager():
     global _manager_initialized
 
     if not _manager_initialized:
-        config = Configuration(app_name="rag-assistant-embeddings")
+        config = Configuration(
+            app_name="rag-assistant-embeddings"
+        )
 
         try:
             FoundryLocalManager.initialize(config)
+
         except FoundryLocalException as error:
             if "singleton" not in str(error).lower():
                 raise error
@@ -29,7 +33,10 @@ def create_foundry_embeddings(texts):
         return []
 
     manager = get_foundry_manager()
-    model = manager.catalog.get_model("qwen3-embedding-0.6b")
+
+    model = manager.catalog.get_model(
+        "qwen3-embedding-0.6b"
+    )
 
     if not model.is_cached:
         print("Embedding model is being downloaded...")
@@ -39,14 +46,44 @@ def create_foundry_embeddings(texts):
 
     try:
         client = model.get_embedding_client()
-        response = client.generate_embeddings(texts)
 
-        embeddings = []
+        all_embeddings = []
 
-        for item in response.data:
-            embeddings.append(item.embedding)
+        total_batches = math.ceil(
+            len(texts) / EMBEDDING_BATCH_SIZE
+        )
 
-        return embeddings
+        for batch_number, start_index in enumerate(
+            range(
+                0,
+                len(texts),
+                EMBEDDING_BATCH_SIZE
+            ),
+            start=1
+        ):
+            end_index = (
+                start_index + EMBEDDING_BATCH_SIZE
+            )
+
+            text_batch = texts[
+                start_index:end_index
+            ]
+
+            print(
+                f"Generating embedding batch "
+                f"{batch_number}/{total_batches}..."
+            )
+
+            response = client.generate_embeddings(
+                text_batch
+            )
+
+            for item in response.data:
+                all_embeddings.append(
+                    item.embedding
+                )
+
+        return all_embeddings
 
     finally:
         model.unload()
@@ -61,7 +98,10 @@ def create_foundry_embedding(text):
     return embeddings[0]
 
 
-def calculate_cosine_similarity(embedding1, embedding2):
+def calculate_cosine_similarity(
+    embedding1,
+    embedding2
+):
     if not embedding1 or not embedding2:
         return 0.0
 
@@ -69,7 +109,10 @@ def calculate_cosine_similarity(embedding1, embedding2):
     magnitude1 = 0.0
     magnitude2 = 0.0
 
-    for value1, value2 in zip(embedding1, embedding2):
+    for value1, value2 in zip(
+        embedding1,
+        embedding2
+    ):
         dot_product += value1 * value2
         magnitude1 += value1 * value1
         magnitude2 += value2 * value2
@@ -80,4 +123,6 @@ def calculate_cosine_similarity(embedding1, embedding2):
     if magnitude1 == 0 or magnitude2 == 0:
         return 0.0
 
-    return dot_product / (magnitude1 * magnitude2)
+    return dot_product / (
+        magnitude1 * magnitude2
+    )
