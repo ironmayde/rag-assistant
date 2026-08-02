@@ -494,5 +494,7 @@ The project is a working local RAG study assistant with:
 - Source information
 - Offline-capable local inference
 
+## Project Presentation
 
+[View the project presentation](presentation/Local_RAG_Study_Assistant_Presentation.pdf)
 
