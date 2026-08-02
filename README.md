@@ -496,5 +496,4 @@ The project is a working local RAG study assistant with:
 
 ## Project Presentation
 
-[View the project presentation](presentation/Local_RAG_Study_Assistant_Presentation.pdf)
-
+[Download the project presentation](https://github.com/ironmayde/rag-assistant/raw/refs/heads/main/presentation/Local_RAG_Study_Assistant_Presentation.pdf)
